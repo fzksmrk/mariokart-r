@@ -3,8 +3,6 @@ setwd("/Users/markfazekas/Documents/00_Code/R/HAZIDOLGOZAT/mariokart-r")
 
 # Install Packages
 # install.packages("janitor")
-# install.packages("dplyr")
-# install.packages("ggplot2")
 
 # Use Packages
 library(readr)
@@ -12,6 +10,10 @@ library(janitor)
 library(dplyr)
 library(stringr)
 library(ggplot2)
+library(psych)
+library(tidyr)
+library(RcmdrMisc)
+library(rcompanion)
 
 # ======== DRIVERS
 
@@ -233,7 +235,9 @@ gliders <- rename_if(gliders, is.numeric, ~ paste0(., "_gliders"))
 
 df_all <-
   crossing(drivers, karts, tires, gliders)
+
 colnames(df_all)
+
 df_summary <- df_all %>%
   mutate(weight = weight_drivers + weight_karts + weight_tires + weight_gliders) %>%
   mutate(speed = ground_speed_drivers + ground_speed_karts + ground_speed_tires + ground_speed_gliders) %>%
@@ -260,15 +264,95 @@ df <-
 df <- df %>%
   mutate(score = traction + handling + acceleration + speed)
 
-write.csv(df,'CSV/df.csv')
+df$driver <- as.factor(df$driver)
+df$size <- as.factor(df$size)
+df$body <- as.factor(df$body)
+df$tire <- as.factor(df$tire)
+df$glider <- as.factor(df$glider)
 
 summary(df)
-str(df)
 
-speed_weight_plot <-
-  ggplot(data = df, aes(x = weight, y = speed)) + geom_point() + geom_smooth() + labs(title = "Karts: Weight vs. Speed", x = "Weight", y = "Speed Score")
+table(df$score)
+binnedCounts(df$score)
+gyak_tabla <- as.data.frame(binnedCounts(df$score))
 
-score_weight_plot <-
-  ggplot(data = df, aes(x = weight, y = score)) + geom_point() + geom_smooth() + labs(title = "Karts: Weight vs. Score", x = "Weight", y = "Score")
+# oszlopnév "szépítése"
+colnames(gyak_tabla) <- "Gyakorisag"
+
+# kumulált gyakoriságok számítása új oszlopba
+gyak_tabla$Kumulalt_Gyak <- cumsum(gyak_tabla$Gyakorisag)
+
+# eredmény megtekintése
+gyak_tabla
+
+# gyakorisági tábla bővítése relatív gyakoriságokkal
+gyak_tabla$Rel_Gyak <-
+  gyak_tabla$Gyakorisag / sum(gyak_tabla$Gyakorisag)
 
 
+# kumulált relatív gyakoriságok számítása új oszlopba
+gyak_tabla$Kumulalt_Rel_Gyak <- cumsum(gyak_tabla$Rel_Gyak)
+
+# eredmény megtekintése
+gyak_tabla
+
+table(df$score)
+
+
+gyak_score <- table(df$score)
+
+# módusz
+gyak_score[gyak_score == max(gyak_score)]
+
+# medián
+median(df$score)
+
+# átlag
+mean(df$score)
+
+plot(table(df$score))
+hist(df$score)
+hist(df$score, breaks = 7)
+
+summary(df$score)
+
+by(df$score, df$size, summary)
+by(df$score, df$driver, summary)
+
+by(df[, c("speed", "acceleration", "score")], df$size, summary)
+
+
+
+# szórás
+N <- nrow(df)
+atlag <- mean(df$score)
+szoras <- sqrt(sum((df$score - atlag) ^ 2) / N)
+# relativ szórás
+szoras / atlag # 0.0876
+
+# szórás sd
+sd(df$score)
+
+describe(df$score)
+
+boxplot(df$score)
+
+df$score[(df$score > 53.5)]
+
+summary(df$size)
+
+#sample
+set.seed(1995)
+df_sample <- df[sample(nrow(df), size = 48, replace = TRUE),]
+mean(df_sample$score)
+
+groupwiseMean(score ~ 1, data = df_sample)
+groupwiseMean(score ~ 1, data = df_sample, conf = 0.99)
+
+groupwiseMedian(score ~ size, data = df_sample, conf = 0.99)
+
+  # speed_weight_plot <-
+#   ggplot(data = df, aes(x = weight, y = speed)) + geom_point() + geom_smooth() + labs(title = "Karts: Weight vs. Speed", x = "Weight", y = "Speed Score")
+# 
+# score_weight_plot <-
+#   ggplot(data = df, aes(x = weight, y = score)) + geom_point() + geom_smooth() + labs(title = "Karts: Weight vs. Score", x = "Weight", y = "Score")
