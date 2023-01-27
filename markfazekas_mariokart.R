@@ -14,6 +14,7 @@ library(psych)
 library(tidyr)
 library(RcmdrMisc)
 library(rcompanion)
+library(questionr)
 
 # ======== DRIVERS
 
@@ -341,15 +342,68 @@ df$score[(df$score > 53.5)]
 
 summary(df$size)
 
+# =============================================================================
+# Intervallumbecslés és Hipotézisvizsgálat
 #sample
 set.seed(1995)
 df_sample <- df[sample(nrow(df), size = 48, replace = TRUE),]
 mean(df_sample$score)
 
+# Intervallumbecslés
 groupwiseMean(score ~ 1, data = df_sample)
 groupwiseMean(score ~ 1, data = df_sample, conf = 0.99)
 
 groupwiseMedian(score ~ size, data = df_sample, conf = 0.99)
+
+# HIPOTÉZIS VIZSGÁLAT
+# H0: sokasági átlag >= 42
+# H1: sokasági átlag < 42
+
+# p-érték
+# P(H0 elvetésével hibát követek el)
+# pl p = 20% (20% az esélye, hogy hibát követek el) 
+#                                     || nem tudom elutasítani H0-t
+
+# ha 0.5% H0 elvetésével kis hibát követek el, tekintsük H1,et igaznak
+#                                     || elutasítom a H0-t
+
+# szignifikancia-szint = alfa
+# H0 elvetésének megengedett hibavalószínűsége
+# általában 1 és 10% közé szokták tenni
+
+# p-érték > alfa ---> H0
+# p-érték <= alfa ---> H1
+
+# p-érték < 1% ---> H1
+# p-érték > 10% ---> H0
+# kettő között - nem dönt, nagyobb mintát veszünk
+
+t.test(df_sample$score, mu=45, alternative="less")
+?t.test
+
+
+df$score_cluster <- cut(df$score, breaks = 5, labels = c("bad","low", "medium", "high","excellent"))
+df$speed_cluster <- cut(df$speed, breaks = 5, labels = c("bad","low", "medium", "high","excellent"))
+df$acceleration_cluster <- cut(df$acceleration, breaks = 5, labels = c("bad","low", "medium", "high","excellent"))
+
+df$score_cluster <- as.factor(df$score_cluster)
+df$speed_cluster <- as.factor(df$speed_cluster)
+df$acceleration_cluster <- as.factor(df$acceleration_cluster)
+
+ggplot(data = df, aes(y = score, x=size, fill = size)) +
+  geom_boxplot()
+
+aov(score ~ size, data = df)
+
+sd(df$score)^2 * (nrow(df)-1)
+
+# ssb / sst
+233852 / 7336621 * 100
+sqrt(233852 / 7336621)
+
+oneway.test(score ~ size, data = df, var.equal = FALSE)
+
+
 
   # speed_weight_plot <-
 #   ggplot(data = df, aes(x = weight, y = speed)) + geom_point() + geom_smooth() + labs(title = "Karts: Weight vs. Speed", x = "Weight", y = "Speed Score")
