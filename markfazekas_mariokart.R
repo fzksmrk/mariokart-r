@@ -1,10 +1,20 @@
-# Set Working Directory
+############################################################################
+############################################################################
+###                                                                      ###
+###                             FAZEKAS MÁRK                             ###
+###                  TÖBBVÁLTOZÓS ADATELEMZÉSI MODELLEK                  ###
+###                            (MAME039LMSB)                             ###
+###                                                                      ###
+############################################################################
+############################################################################
+
+## Set Working Directory
 setwd("/Users/markfazekas/Documents/00_Code/R/HAZIDOLGOZAT/mariokart-r")
 
-# Install Packages
-# install.packages("janitor")
+## Install Packages
+# install.packages("janitor") # keeping an example line here
 
-# Use Packages
+## Use Packages
 library(readr)
 library(janitor)
 library(dplyr)
@@ -16,8 +26,17 @@ library(RcmdrMisc)
 library(rcompanion)
 library(questionr)
 
-# ======== DRIVERS
 
+######################
+##  Data Preparation
+######################
+
+
+##:::::::::::
+##  Drivers
+##:::::::::::
+
+# olvassuk be az adatokat a helyes formátummal
 drivers <- read_delim(
   "CSV/drivers.csv",
   delim = ";",
@@ -40,9 +59,13 @@ drivers <- read_delim(
   trim_ws = TRUE
 )
 
+# egységesítsük az oszlop neveket
 drivers <- janitor::clean_names(drivers, "snake")
 
+# vegyük ki a zárójeleket
 drivers$driver <- gsub("[()]", "", drivers$driver)
+
+# csoportosítsuk az azonos rekordokat, amik csak "névben" különböznek
 # drivers <- drivers %>%
 #   group_by_if(is.numeric) %>% #group by all numeric columns
 #   summarise_at(vars(-one_of(names(drivers)[is.numeric(drivers)])), paste, collapse = ", ") %>% #concatenate the text variable
@@ -50,6 +73,7 @@ drivers$driver <- gsub("[()]", "", drivers$driver)
 # drivers <- drivers %>%
 #   mutate(number_of_recs = str_count(driver, ",") + 1)
 
+# extend the table with the missing size information
 drivers <- drivers %>%
   mutate(
     size = case_when(
@@ -100,6 +124,7 @@ drivers <- drivers %>%
     )
   )
 
+# remove unnecessary columns
 drivers <-
   drivers[, c(
     "driver",
@@ -111,7 +136,10 @@ drivers <-
     "on_road_traction"
   )]
 
-# ======== KARTS
+
+##:::::::::
+##  Karts
+##:::::::::
 
 karts <- read_delim(
   "CSV/bodies_karts.csv",
@@ -148,7 +176,10 @@ karts <-
     "on_road_traction"
   )]
 
-# ======== GLIDERS
+
+##:::::::::::
+##  Gliders
+##:::::::::::
 
 gliders <- read_delim(
   "CSV/gliders.csv",
@@ -185,7 +216,10 @@ gliders <-
     "on_road_traction"
   )]
 
-# ======== TIRES
+
+##:::::::::
+##  Tires
+##:::::::::
 
 tires <- read_delim(
   "CSV/tires.csv",
@@ -224,9 +258,9 @@ tires <-
 
 
 
-# ====================
-# Combine the 4 dfs
-# ====================
+##::::::::::::::::::
+##  Configurations
+##::::::::::::::::::
 
 # rename columns
 drivers <- rename_if(drivers, is.numeric, ~ paste0(., "_drivers"))
@@ -234,11 +268,11 @@ karts <- rename_if(karts, is.numeric, ~ paste0(., "_karts"))
 tires <- rename_if(tires, is.numeric, ~ paste0(., "_tires"))
 gliders <- rename_if(gliders, is.numeric, ~ paste0(., "_gliders"))
 
+# Cartesian product
 df_all <-
   crossing(drivers, karts, tires, gliders)
 
-colnames(df_all)
-
+# calculate the total weight / speed / acceleration / handling for the configurations
 df_summary <- df_all %>%
   mutate(weight = weight_drivers + weight_karts + weight_tires + weight_gliders) %>%
   mutate(speed = ground_speed_drivers + ground_speed_karts + ground_speed_tires + ground_speed_gliders) %>%
@@ -248,6 +282,7 @@ df_summary <- df_all %>%
     traction = on_road_traction_drivers + on_road_traction_karts + on_road_traction_tires + on_road_traction_gliders
   )
 
+# keep only necessary columns
 df <-
   df_summary[, c(
     "driver",
@@ -262,14 +297,48 @@ df <-
     "traction"
   )]
 
+# calculate a score
 df <- df %>%
   mutate(score = traction + handling + acceleration + speed)
 
+df$score_category <-
+  cut(
+    df$score,
+    breaks = 5,
+    labels = c("bad", "low", "medium", "high", "excellent")
+  )
+df$speed_category <-
+  cut(
+    df$speed,
+    breaks = 5,
+    labels = c("bad", "low", "medium", "high", "excellent")
+  )
+df$acceleration_category <-
+  cut(
+    df$acceleration,
+    breaks = 5,
+    labels = c("bad", "low", "medium", "high", "excellent")
+  )
+
+# format columns as factor
 df$driver <- as.factor(df$driver)
 df$size <- as.factor(df$size)
 df$body <- as.factor(df$body)
 df$tire <- as.factor(df$tire)
 df$glider <- as.factor(df$glider)
+df$score_category <- as.factor(df$score_category)
+df$speed_category <- as.factor(df$speed_category)
+df$acceleration_category <- as.factor(df$acceleration_category)
+
+
+############################################################################
+############################################################################
+###                                                                      ###
+###                              SECTION 2:                              ###
+###                      LEÍRÓ STATISZTIKAI ELEMZÉS                      ###
+###                                                                      ###
+############################################################################
+############################################################################
 
 summary(df)
 
@@ -290,15 +359,11 @@ gyak_tabla
 gyak_tabla$Rel_Gyak <-
   gyak_tabla$Gyakorisag / sum(gyak_tabla$Gyakorisag)
 
-
 # kumulált relatív gyakoriságok számítása új oszlopba
 gyak_tabla$Kumulalt_Rel_Gyak <- cumsum(gyak_tabla$Rel_Gyak)
 
 # eredmény megtekintése
 gyak_tabla
-
-table(df$score)
-
 
 gyak_score <- table(df$score)
 
@@ -322,8 +387,6 @@ by(df$score, df$driver, summary)
 
 by(df[, c("speed", "acceleration", "score")], df$size, summary)
 
-
-
 # szórás
 N <- nrow(df)
 atlag <- mean(df$score)
@@ -342,60 +405,59 @@ df$score[(df$score > 53.5)]
 
 summary(df$size)
 
-# =============================================================================
-# Intervallumbecslés és Hipotézisvizsgálat
-#sample
+############################################################################
+############################################################################
+###                                                                      ###
+###                              SECTION 3:                              ###
+###               INTERVALLUMBECSLÉS ÉS HIPOTÉZISVIZSGÁLAT               ###
+###                                                                      ###
+############################################################################
+############################################################################
+
+# Create a sample
 set.seed(1995)
 df_sample <- df[sample(nrow(df), size = 48, replace = TRUE),]
 mean(df_sample$score)
 
-# Intervallumbecslés
+
+##::::::::::::::::::::::
+##  Intervallumbecslés
+##::::::::::::::::::::::
+
 groupwiseMean(score ~ 1, data = df_sample)
 groupwiseMean(score ~ 1, data = df_sample, conf = 0.99)
 
 groupwiseMedian(score ~ size, data = df_sample, conf = 0.99)
 
-# HIPOTÉZIS VIZSGÁLAT
+
+##::::::::::::::::::::::
+##  Hipotézisvizsgálat
+##::::::::::::::::::::::
+
 # H0: sokasági átlag >= 42
 # H1: sokasági átlag < 42
 
-# p-érték
-# P(H0 elvetésével hibát követek el)
-# pl p = 20% (20% az esélye, hogy hibát követek el) 
-#                                     || nem tudom elutasítani H0-t
-
-# ha 0.5% H0 elvetésével kis hibát követek el, tekintsük H1,et igaznak
-#                                     || elutasítom a H0-t
-
-# szignifikancia-szint = alfa
-# H0 elvetésének megengedett hibavalószínűsége
-# általában 1 és 10% közé szokták tenni
-
-# p-érték > alfa ---> H0
-# p-érték <= alfa ---> H1
-
-# p-érték < 1% ---> H1
-# p-érték > 10% ---> H0
-# kettő között - nem dönt, nagyobb mintát veszünk
-
-t.test(df_sample$score, mu=45, alternative="less")
-?t.test
+t.test(df_sample$score, mu = 45, alternative = "less")
 
 
-df$score_cluster <- cut(df$score, breaks = 5, labels = c("bad","low", "medium", "high","excellent"))
-df$speed_cluster <- cut(df$speed, breaks = 5, labels = c("bad","low", "medium", "high","excellent"))
-df$acceleration_cluster <- cut(df$acceleration, breaks = 5, labels = c("bad","low", "medium", "high","excellent"))
+############################################################################
+############################################################################
+###                                                                      ###
+###                              SECTION 4:                              ###
+###                    KÉTVÁLTOZÓS KAPCSOLATVIZSGÁLAT                    ###
+###                                                                      ###
+############################################################################
+############################################################################
 
-df$score_cluster <- as.factor(df$score_cluster)
-df$speed_cluster <- as.factor(df$speed_cluster)
-df$acceleration_cluster <- as.factor(df$acceleration_cluster)
 
-ggplot(data = df, aes(y = score, x=size, fill = size)) +
+## Vegyes kapcsolat (minőségi - mennyiségi) ################################
+
+ggplot(data = df, aes(y = score, x = size, fill = size)) +
   geom_boxplot()
 
 aov(score ~ size, data = df)
 
-sd(df$score)^2 * (nrow(df)-1)
+sd(df$score) ^ 2 * (nrow(df) - 1)
 
 # ssb / sst
 233852 / 7336621 * 100
@@ -404,9 +466,42 @@ sqrt(233852 / 7336621)
 oneway.test(score ~ size, data = df, var.equal = FALSE)
 
 
+## Asszociációs kapcsolat ######################################################
 
-  # speed_weight_plot <-
-#   ggplot(data = df, aes(x = weight, y = speed)) + geom_point() + geom_smooth() + labs(title = "Karts: Weight vs. Speed", x = "Weight", y = "Speed Score")
-# 
-# score_weight_plot <-
-#   ggplot(data = df, aes(x = weight, y = score)) + geom_point() + geom_smooth() + labs(title = "Karts: Weight vs. Score", x = "Weight", y = "Score")
+ggplot(data = df, aes(x = speed_category, fill = size)) +
+  geom_bar()
+
+ggplot(data = df, aes(x = speed_category, fill = size)) +
+  geom_bar(position = "fill")
+
+## Heatmap
+# Create a contingency table
+data_table <- table(df$speed_category, df$size)
+
+# Convert the table to a data frame
+data_table_df <- as.data.frame(data_table)
+
+# Create a ggplot object
+ggplot(data_table_df, aes(x = Var1, y = Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient(name = "Count",
+                      low = "white",
+                      high = "gray") +
+  geom_text(aes(label = Freq), color = "black", size = 3) +
+  ggtitle("Heatmap")
+
+
+##::::::::
+##  Misc
+##::::::::
+
+# speed_weight_plot <-
+ggplot(data = df, aes(x = speed, y = acceleration)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title = "Configuration: Speed vs. Acceleration", x = "Speed", y = "Acceleration")
+
+ggplot(data = df, aes(x = weight, y = score)) +
+  geom_point() +
+  geom_smooth() +
+  labs(title = "Karts: Weight vs. Score", x = "Weight", y = "Score")
