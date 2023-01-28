@@ -8,6 +8,9 @@
 ############################################################################
 ############################################################################
 
+# commenting formats
+# https://cran.r-project.org/web/packages/bannerCommenter/vignettes/Banded_comment_maker.pdf
+
 ## Set Working Directory
 setwd("/Users/markfazekas/Documents/00_Code/R/HAZIDOLGOZAT/mariokart-r")
 
@@ -141,6 +144,7 @@ drivers <-
 ##  Karts
 ##:::::::::
 
+# read csv
 karts <- read_delim(
   "CSV/bodies_karts.csv",
   delim = ";",
@@ -163,8 +167,10 @@ karts <- read_delim(
   trim_ws = TRUE
 )
 
+# clean column names
 karts <- janitor::clean_names(karts, "snake")
 
+# keep only necessary columns
 colnames(karts)
 karts <-
   karts[, c(
@@ -181,6 +187,7 @@ karts <-
 ##  Gliders
 ##:::::::::::
 
+# read csv
 gliders <- read_delim(
   "CSV/gliders.csv",
   delim = ";",
@@ -203,9 +210,10 @@ gliders <- read_delim(
   trim_ws = TRUE
 )
 
+# clean column names
 gliders <- janitor::clean_names(gliders, "snake")
 
-colnames(gliders)
+# keep only necessary columns
 gliders <-
   gliders[, c(
     "glider",
@@ -221,6 +229,7 @@ gliders <-
 ##  Tires
 ##:::::::::
 
+# read csv
 tires <- read_delim(
   "CSV/tires.csv",
   delim = ";",
@@ -243,9 +252,10 @@ tires <- read_delim(
   trim_ws = TRUE
 )
 
+# clean names
 tires <- janitor::clean_names(tires, "snake")
 
-colnames(tires)
+# keep only necessary columns
 tires <-
   tires[, c(
     "tire",
@@ -255,7 +265,6 @@ tires <-
     "ground_handling",
     "on_road_traction"
   )]
-
 
 
 ##::::::::::::::::::
@@ -301,6 +310,7 @@ df <-
 df <- df %>%
   mutate(score = traction + handling + acceleration + speed)
 
+# minőségi változókat csináljunk
 df$score_category <-
   cut(
     df$score,
@@ -380,6 +390,10 @@ plot(table(df$score))
 hist(df$score)
 hist(df$score, breaks = 7)
 
+ggplot(data = df, aes(x = score)) +
+  geom_histogram(bins=23, color = 1, fill="white") +
+  labs(x="Score", y="Gyakoriság (db)", title = "Score eloszlása")
+  
 summary(df$score)
 
 by(df$score, df$size, summary)
@@ -401,7 +415,8 @@ describe(df$score)
 
 boxplot(df$score)
 
-df$score[(df$score > 53.5)]
+ggplot(data = df, aes(y = score)) +
+  geom_boxplot()
 
 summary(df$size)
 
@@ -450,7 +465,9 @@ t.test(df_sample$score, mu = 45, alternative = "less")
 ############################################################################
 
 
-## Vegyes kapcsolat (minőségi - mennyiségi) ################################
+##::::::::::::::::::::::::::::::::::::::::::::
+##  Vegyes kapcsolat (minőségi - mennyiségi)  
+##::::::::::::::::::::::::::::::::::::::::::::
 
 ggplot(data = df, aes(y = score, x = size, fill = size)) +
   geom_boxplot()
@@ -466,13 +483,17 @@ sqrt(233852 / 7336621)
 oneway.test(score ~ size, data = df, var.equal = FALSE)
 
 
-## Asszociációs kapcsolat ######################################################
+##:::::::::::::::::::::::::::::::::::::::::::::::
+##  Asszociációs kapcsolat (minőségi - minőségi)  
+##:::::::::::::::::::::::::::::::::::::::::::::::
 
 ggplot(data = df, aes(x = speed_category, fill = size)) +
   geom_bar()
 
 ggplot(data = df, aes(x = speed_category, fill = size)) +
   geom_bar(position = "fill")
+
+round(prop.table(table(df[,c("speed_category", "size")]), 1)*100, 1)
 
 ## Heatmap
 # Create a contingency table
@@ -490,18 +511,76 @@ ggplot(data_table_df, aes(x = Var1, y = Var2, fill = Freq)) +
   geom_text(aes(label = Freq), color = "black", size = 3) +
   ggtitle("Heatmap")
 
+## Cramer
+questionr::cramer.v(table(df[,c("speed_category", "size")])) # 0.5663875
+# 0.3 <= Cramer <= 0.7 –> közepes kapcsolat
 
-##::::::::
-##  Misc
-##::::::::
+## Khi-négyzet
+# H0:A kapcsolat a sokaságban nem szignifikáns, azaz Cramer-együttható = 0 a sokaságban
+# H1:A kapcsolat a sokaságban szignifikáns, azaz Cramer-együttható > 0 a sokaságban
 
-# speed_weight_plot <-
+chisq.test(table(df[,c("speed_category", "size")]))
+
+# ellenőrizzük a feltételt
+table(df[,c("speed_category", "size")])
+# mivel nincsen mindenhol meg a legalább 5 elem, nem végezhető el
+
+
+
+
+##:::::::::::::::::::::::::::::::::::::::::::::::::::
+##  Korrelációs kapcsolat (mennyiségi - mennyiségi)  
+##:::::::::::::::::::::::::::::::::::::::::::::::::::
+
+## Heatmap
+ggplot(as.data.frame(table(df$speed, df$acceleration)), aes(x = Var1, y = Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient(name = "Count",
+                      low = "white",
+                      high = "gray") +
+  geom_text(aes(label = Freq), color = "black", size = 2) +
+  ggtitle("Heatmap")
+
+## Korreláció
+cor(df$speed, df$acceleration)
+
+## Scatterplot
 ggplot(data = df, aes(x = speed, y = acceleration)) +
   geom_point() +
-  geom_smooth() +
+  geom_smooth(method=lm) +
   labs(title = "Configuration: Speed vs. Acceleration", x = "Speed", y = "Acceleration")
 
-ggplot(data = df, aes(x = weight, y = score)) +
+
+df_freq <- as.data.frame(table(df$speed, df$acceleration))
+df_without_0s <- df_freq %>%
+  filter(Freq != 0)
+  
+ggplot(df_without_0s, aes(x = Var1, y = Var2, size=Freq)) +
   geom_point() +
-  geom_smooth() +
-  labs(title = "Karts: Weight vs. Score", x = "Weight", y = "Score")
+  labs(title = "Configuration: Speed vs. Acceleration", x = "Speed", y = "Acceleration")
+
+## A determinációs együttható
+cor(df$speed, df$acceleration)^2
+
+lm(speed ~ acceleration, data = df)
+
+
+RegModell <- lm(acceleration ~ speed, data = df)
+df$becsült_gyorsulas <- predict(RegModell, newdata = df)
+head(df)
+
+# A regressziós egyenes együtthatóinak hipotézsvizsgálata
+summary(RegModell)
+
+## Korrelációs kapcsolat egy minőségi változó szerint megbontva
+ggplot(data = df, aes(x = speed, y = acceleration, color=size)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  labs(title = "Configuration: Speed vs. Acceleration", x = "Speed", y = "Acceleration")
+
+df$size <- relevel(df$size, ref = "medium")
+summary(lm(acceleration ~ speed + size*speed, data = df))
+
+
+
+
