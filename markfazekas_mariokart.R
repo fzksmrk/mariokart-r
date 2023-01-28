@@ -391,9 +391,11 @@ hist(df$score)
 hist(df$score, breaks = 7)
 
 ggplot(data = df, aes(x = score)) +
-  geom_histogram(bins=23, color = 1, fill="white") +
-  labs(x="Score", y="Gyakoriság (db)", title = "Score eloszlása")
-  
+  geom_histogram(bins = 23,
+                 color = 1,
+                 fill = "white") +
+  labs(x = "Score", y = "Gyakoriság (db)", title = "Score eloszlása")
+
 summary(df$score)
 
 by(df$score, df$size, summary)
@@ -431,7 +433,7 @@ summary(df$size)
 
 # Create a sample
 set.seed(1995)
-df_sample <- df[sample(nrow(df), size = 48, replace = TRUE),]
+df_sample <- df[sample(nrow(df), size = 48, replace = TRUE), ]
 mean(df_sample$score)
 
 
@@ -466,7 +468,7 @@ t.test(df_sample$score, mu = 45, alternative = "less")
 
 
 ##::::::::::::::::::::::::::::::::::::::::::::
-##  Vegyes kapcsolat (minőségi - mennyiségi)  
+##  Vegyes kapcsolat (minőségi - mennyiségi)
 ##::::::::::::::::::::::::::::::::::::::::::::
 
 ggplot(data = df, aes(y = score, x = size, fill = size)) +
@@ -484,7 +486,7 @@ oneway.test(score ~ size, data = df, var.equal = FALSE)
 
 
 ##:::::::::::::::::::::::::::::::::::::::::::::::
-##  Asszociációs kapcsolat (minőségi - minőségi)  
+##  Asszociációs kapcsolat (minőségi - minőségi)
 ##:::::::::::::::::::::::::::::::::::::::::::::::
 
 ggplot(data = df, aes(x = speed_category, fill = size)) +
@@ -493,7 +495,8 @@ ggplot(data = df, aes(x = speed_category, fill = size)) +
 ggplot(data = df, aes(x = speed_category, fill = size)) +
   geom_bar(position = "fill")
 
-round(prop.table(table(df[,c("speed_category", "size")]), 1)*100, 1)
+round(prop.table(table(df[, c("speed_category", "size")]), 1) * 100, 1)
+
 
 ## Heatmap
 # Create a contingency table
@@ -511,26 +514,27 @@ ggplot(data_table_df, aes(x = Var1, y = Var2, fill = Freq)) +
   geom_text(aes(label = Freq), color = "black", size = 3) +
   ggtitle("Heatmap")
 
+
 ## Cramer
-questionr::cramer.v(table(df[,c("speed_category", "size")])) # 0.5663875
+questionr::cramer.v(table(df[, c("speed_category", "size")])) # 0.5663875
 # 0.3 <= Cramer <= 0.7 –> közepes kapcsolat
+
 
 ## Khi-négyzet
 # H0:A kapcsolat a sokaságban nem szignifikáns, azaz Cramer-együttható = 0 a sokaságban
 # H1:A kapcsolat a sokaságban szignifikáns, azaz Cramer-együttható > 0 a sokaságban
 
-chisq.test(table(df[,c("speed_category", "size")]))
+chisq.test(table(df[, c("speed_category", "size")]))
 
 # ellenőrizzük a feltételt
-table(df[,c("speed_category", "size")])
+table(df[, c("speed_category", "size")])
 # mivel nincsen mindenhol meg a legalább 5 elem, nem végezhető el
 
 
-
-
 ##:::::::::::::::::::::::::::::::::::::::::::::::::::
-##  Korrelációs kapcsolat (mennyiségi - mennyiségi)  
+##  Korrelációs kapcsolat (mennyiségi - mennyiségi)
 ##:::::::::::::::::::::::::::::::::::::::::::::::::::
+
 
 ## Heatmap
 ggplot(as.data.frame(table(df$speed, df$acceleration)), aes(x = Var1, y = Var2, fill = Freq)) +
@@ -541,46 +545,43 @@ ggplot(as.data.frame(table(df$speed, df$acceleration)), aes(x = Var1, y = Var2, 
   geom_text(aes(label = Freq), color = "black", size = 2) +
   ggtitle("Heatmap")
 
+
 ## Korreláció
 cor(df$speed, df$acceleration)
 
-## Scatterplot
+
+## Pont diagram
 ggplot(data = df, aes(x = speed, y = acceleration)) +
   geom_point() +
-  geom_smooth(method=lm) +
+  geom_smooth(method = lm) +
   labs(title = "Configuration: Speed vs. Acceleration", x = "Speed", y = "Acceleration")
 
 
 df_freq <- as.data.frame(table(df$speed, df$acceleration))
 df_without_0s <- df_freq %>%
   filter(Freq != 0)
-  
-ggplot(df_without_0s, aes(x = Var1, y = Var2, size=Freq)) +
+
+ggplot(df_without_0s, aes(x = Var1, y = Var2, size = Freq)) +
   geom_point() +
   labs(title = "Configuration: Speed vs. Acceleration", x = "Speed", y = "Acceleration")
 
 ## A determinációs együttható
-cor(df$speed, df$acceleration)^2
+cor(df$speed, df$acceleration) ^ 2
 
 lm(speed ~ acceleration, data = df)
 
-
-RegModell <- lm(acceleration ~ speed, data = df)
-df$becsült_gyorsulas <- predict(RegModell, newdata = df)
-head(df)
+# RegModell <- lm(acceleration ~ speed, data = df)
+# df$becsült_gyorsulas <- predict(RegModell, newdata = df)
+# head(df)
 
 # A regressziós egyenes együtthatóinak hipotézsvizsgálata
 summary(RegModell)
 
 ## Korrelációs kapcsolat egy minőségi változó szerint megbontva
-ggplot(data = df, aes(x = speed, y = acceleration, color=size)) +
+ggplot(data = df, aes(x = speed, y = acceleration, color = size)) +
   geom_point() +
-  geom_smooth(method=lm) +
+  geom_smooth(method = lm) +
   labs(title = "Configuration: Speed vs. Acceleration", x = "Speed", y = "Acceleration")
 
 df$size <- relevel(df$size, ref = "medium")
-summary(lm(acceleration ~ speed + size*speed, data = df))
-
-
-
-
+summary(lm(acceleration ~ speed + size * speed, data = df))
